@@ -1,0 +1,39 @@
+# ============================================================
+# NEXUS AI — Backend requirements
+# Install:  python3 -m pip install -r backend/requirements.txt
+# Heavy/runtime-only deps (paddleocr, chromadb, ollama) are
+# optional — the app degrades gracefully when absent.
+# ============================================================
+
+# Web
+fastapi>=0.111
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.6
+pydantic-settings>=2.2
+
+# Auth / security
+PyJWT>=2.8
+passlib>=1.7.4
+# passlib 1.7.4 breaks with bcrypt>=4.1 (removed __about__ attr)
+bcrypt>=4.0,<4.1
+
+# Documents & deliverables
+pymupdf>=1.24
+python-docx>=1.1
+openpyxl>=3.1
+python-pptx>=0.6.23
+pillow>=10.0
+
+# Vector search / RAG (local)
+chromadb>=0.4.24
+
+# LLM gateway
+ollama>=0.3
+
+# OCR (local). Tesseract requires the system binary too.
+pytesseract>=0.3.11
+paddleocr>=2.7.3 ; python_version < "3.12"
+
+# Config / env
+python-dotenv>=1.0

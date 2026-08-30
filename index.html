@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sovereign AI · Command Center</title>
+    <meta
+      name="description"
+      content="Sovereign On-Premise Agentic AI Workbench using Open-Weight Multimodal LLMs for Confidential Industrial Work (SIH26117). Air-gapped, zero data egress."
+    />
+    <link rel="stylesheet" href="css/design-system.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar"></aside>
+      <header class="topbar" id="topbar" aria-label="Top bar"></header>
+      <main class="view" id="view" role="main"></main>
+    </div>
+
+    <!-- view transition animation -->
+    <style>
+      .view-enter { animation: fade-view 0.28s ease; }
+      @keyframes fade-view {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/simulator.js"></script>
+    <script src="js/views/dashboard.js"></script>
+    <script src="js/views/documents.js"></script>
+    <script src="js/views/knowledge.js"></script>
+    <script src="js/views/security.js"></script>
+    <script src="js/views/workspaces.js"></script>
+    <script src="js/views/workshops.js"></script>
+    <script src="js/views/tasks.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
