@@ -130,10 +130,10 @@ class Agent:
     # ---- core tools ----
     def _llm(self, spec, prompt: str, system: str = "You are a concise enterprise engineering assistant. Respond with relevant facts and cite sources when using them.") -> str:
         self.model_used(spec)
-        if not model_gateway.gateway.available:
+        if not model_gateway.registry.available:
             return f"[model-gateway-offline] reasoning placeholder for {len(prompt)} chars"
         try:
-            resp = model_gateway.gateway.chat(spec.model_id, [
+            resp = model_gateway.registry.chat(spec.model_id, [
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ])

@@ -11,6 +11,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+from abc import ABC, abstractmethod
 
 from app.core.config import get_settings
 from app.services.network_guard import guard_request, local_request
@@ -45,7 +46,32 @@ DEFAULT_MODEL_REGISTRY = [
 ]
 
 
-class OllamaGateway:
+class ModelProvider(ABC):
+    """Abstract base class for all LLM providers."""
+
+    @property
+    @abstractmethod
+    def available(self) -> bool:
+        pass
+
+    @abstractmethod
+    def list_models(self) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def chat(self, model: str, messages: list[dict], stream: bool = False, tools: Optional[list] = None):
+        pass
+
+    @abstractmethod
+    def embed(self, model: str, text: str):
+        pass
+
+    @abstractmethod
+    def generate(self, model: str, prompt: str, **kw):
+        pass
+
+
+class OllamaProvider(ModelProvider):
     """Talks to a local Ollama instance. All traffic stays on loopback."""
 
     def __init__(self):
@@ -87,7 +113,7 @@ class OllamaGateway:
     def chat(self, model: str, messages: list[dict], stream: bool = False,
              tools: Optional[list] = None):
         if not self.available or self._client is None:
-            raise RuntimeError("Model gateway unavailable")
+            raise RuntimeError("Model provider unavailable (Ollama)")
         kwargs = dict(model=model, messages=messages, stream=stream)
         if tools:
             kwargs["tools"] = tools
@@ -95,7 +121,7 @@ class OllamaGateway:
 
     def embed(self, model: str, text: str):
         if not self.available or self._client is None:
-            raise RuntimeError("Model gateway unavailable")
+            raise RuntimeError("Model provider unavailable (Ollama)")
         r = self._client.embed(model=model, input=text)
         # normalize across ollama API versions -> list of vectors
         if isinstance(r, dict):
@@ -108,22 +134,140 @@ class OllamaGateway:
 
     def generate(self, model: str, prompt: str, **kw):
         if not self.available or self._client is None:
-            raise RuntimeError("Model gateway unavailable")
+            raise RuntimeError("Model provider unavailable (Ollama)")
         return self._client.generate(model=model, prompt=prompt, **kw)
 
 
-gateway = OllamaGateway()
+class OpenAICompatibleProvider(ModelProvider):
+    """Talks to any OpenAI-compatible API (e.g. vLLM, LMStudio, local Llama.cpp server)."""
+
+    def __init__(self, base_url: str = "http://localhost:8000/v1", api_key: str = "dummy"):
+        self.base_url = base_url
+        self.api_key = api_key
+        self._client = None
+        self._available = None
+
+    @property
+    def available(self) -> bool:
+        if self._available is None:
+            self._check()
+        return self._available
+
+    def _check(self) -> None:
+        try:
+            import openai
+            if not guard_request(self.base_url, "HTTP", "OpenAI Compat gateway"):
+                self._available = False
+                return
+            self._client = openai.OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=2.0)
+            self._client.models.list()
+            self._available = True
+            local_request()
+        except Exception as e:
+            logger.warning("OpenAICompat unavailable: %s", e)
+            self._available = False
+            self._client = None
+
+    def list_models(self) -> list[dict]:
+        if not self.available or self._client is None:
+            return []
+        try:
+            r = self._client.models.list()
+            return [{"name": m.id} for m in r.data]
+        except Exception as e:
+            logger.warning("OpenAI list failed: %s", e)
+            return []
+
+    def chat(self, model: str, messages: list[dict], stream: bool = False, tools: Optional[list] = None):
+        if not self.available or self._client is None:
+            raise RuntimeError("Model provider unavailable (OpenAI)")
+        
+        # Translate Ollama format messages to standard OpenAI format if needed
+        # (For now we assume they are generally compatible format-wise)
+        kwargs = dict(model=model, messages=messages, stream=stream)
+        if tools:
+            # We assume tools are passed in a format that works, or we leave it for a future adapter
+            kwargs["tools"] = tools
+            
+        resp = self._client.chat.completions.create(**kwargs)
+        if stream:
+            return resp
+            
+        # Return format expected by caller (Ollama format) to minimize changes in agent.py
+        # Ollama returns: {'message': {'role': 'assistant', 'content': '...'}}
+        choice = resp.choices[0]
+        return {"message": {"role": choice.message.role, "content": choice.message.content}}
+
+    def embed(self, model: str, text: str):
+        if not self.available or self._client is None:
+            raise RuntimeError("Model provider unavailable (OpenAI)")
+        resp = self._client.embeddings.create(model=model, input=text)
+        return [data.embedding for data in resp.data]
+
+    def generate(self, model: str, prompt: str, **kw):
+        return self.chat(model=model, messages=[{"role": "user", "content": prompt}], **kw)
+
+
+class ModelRegistry:
+    """Manages all configured model providers and routes requests."""
+    
+    def __init__(self):
+        self.providers: list[ModelProvider] = [OllamaProvider(), OpenAICompatibleProvider()]
+        
+    @property
+    def available(self) -> bool:
+        return any(p.available for p in self.providers)
+
+    def _get_provider_for(self, model_id: str) -> ModelProvider:
+        # Simplistic routing logic: find the first available provider that lists this model
+        for p in self.providers:
+            if not p.available:
+                continue
+            for m in p.list_models():
+                if model_id.lower() in m["name"].lower() or m["name"].lower() in model_id.lower():
+                    return p
+        
+        # Fallback to the first available provider if exact match isn't found
+        for p in self.providers:
+            if p.available:
+                return p
+                
+        raise RuntimeError(f"No providers available to handle {model_id}")
+
+    def chat(self, model: str, messages: list[dict], stream: bool = False, tools: Optional[list] = None):
+        p = self._get_provider_for(model)
+        return p.chat(model, messages, stream, tools)
+
+    def embed(self, model: str, text: str):
+        p = self._get_provider_for(model)
+        return p.embed(model, text)
+        
+    def generate(self, model: str, prompt: str, **kw):
+        p = self._get_provider_for(model)
+        return p.generate(model, prompt, **kw)
+        
+    def list_all_models(self) -> list[dict]:
+        all_models = []
+        for p in self.providers:
+            if p.available:
+                all_models.extend(p.list_models())
+        return all_models
+
+
+# Global registry replacing the single gateway instance
+registry = ModelRegistry()
 
 
 def registered_models() -> list[dict]:
     """Registered model catalog (merged with availability)."""
     out = []
+    avail_models = registry.list_all_models()
     for spec in DEFAULT_MODEL_REGISTRY:
         available = spec.model_type != "embed"  # embed is always local
         try:
-            if gateway.available and spec.model_type != "embed":
+            if registry.available and spec.model_type != "embed":
                 available = any(m["name"].startswith(spec.name.split("-")[0].lower())
-                                or spec.model_id in m["name"] for m in gateway.list_models())
+                                or spec.model_id in m["name"] for m in avail_models)
         except Exception:  # noqa
             pass
         out.append({

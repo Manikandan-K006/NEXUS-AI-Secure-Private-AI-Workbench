@@ -30,6 +30,7 @@ chromadb>=0.4.24
 
 # LLM gateway
 ollama>=0.3
+openai>=1.0
 
 # OCR (local). Tesseract requires the system binary too.
 pytesseract>=0.3.11

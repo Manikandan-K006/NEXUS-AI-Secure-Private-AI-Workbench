@@ -18,9 +18,9 @@ def list_models(_payload=Depends(get_current_user)):
 @router.get("/installed")
 def installed_models(_payload=Depends(get_current_user)):
     return {
-        "gateway": "ollama",
-        "available": model_gateway.gateway.available,
-        "installed": model_gateway.gateway.list_models(),
+        "gateway": "registry",
+        "available": model_gateway.registry.available,
+        "installed": model_gateway.registry.list_all_models(),
     }
 
 
