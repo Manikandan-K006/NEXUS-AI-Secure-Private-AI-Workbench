@@ -1,13 +1,12 @@
 /* ============================================================
-   SOVEREIGN AI — Backend bridge (DEMO / LIVE)
-   Detects the real FastAPI backend at /api and exposes a small
-   fetch layer. Views keep using mock AppState data, but the UI
-   reports the true runtime mode and can switch quickly.
+   NEXUS AI 2.0 — Backend bridge (LIVE ONLY)
+   Always connects to the real FastAPI backend at /api.
+   No demo/mock fallback — if backend is unreachable, show error.
    ============================================================ */
 
 const NexusMode = {
-  value: "demo", // "demo" | "live"
-  detected: null, // what /api/health reported
+  value: "live",
+  detected: null,
   health: null,
   token: null,
 };
@@ -28,30 +27,34 @@ async function apiFetch(path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-/* Contact the backend once and decide LIVE vs DEMO */
+/* Contact the backend and authenticate */
 async function detectBackend() {
   try {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 2500);
+    const t = setTimeout(() => ctl.abort(), 4000);
     const res = await fetch("/api/health", { signal: ctl.signal, headers: { Accept: "application/json" } });
     clearTimeout(t);
-    if (!res.ok) throw new Error("status");
+    if (!res.ok) throw new Error("status " + res.status);
     const h = await res.json();
     NexusMode.health = h;
     NexusMode.detected = h.mode || "LIVE";
     NexusMode.value = "live";
-    // auto-authenticate with the bootstrap default so live endpoints work out of the box
+    // auto-authenticate with the bootstrap default
     try {
       await nexusLogin("admin", "admin");
     } catch (e) {
       NexusMode.token = null;
     }
   } catch (e) {
-    NexusMode.value = "demo";
-    NexusMode.detected = "demo";
+    NexusMode.value = "live"; // still live mode, just offline
+    NexusMode.detected = "offline";
     NexusMode.health = null;
   }
   updateModeUI();
+  // After detecting backend, populate live data
+  if (NexusMode.health) {
+    loadLiveAppState();
+  }
   return NexusMode;
 }
 
@@ -70,44 +73,79 @@ async function nexusLogin(username, password) {
   return j;
 }
 
+/* -------- Load real data from backend -------- */
+async function loadLiveAppState() {
+  try {
+    // Load models
+    const modelsRes = await apiFetch("/models").catch(() => null);
+    if (modelsRes && modelsRes.models) {
+      AppState.models = modelsRes.models;
+      AppState.tasks.loadedModels = modelsRes.models.filter(m => m.loaded || m.status === "READY").length;
+    }
+    // Load documents
+    const docsRes = await apiFetch("/documents").catch(() => null);
+    if (docsRes && docsRes.documents) {
+      AppState.documents = docsRes.documents;
+    }
+    // Load system info
+    const sysRes = await apiFetch("/system/info").catch(() => null);
+    if (sysRes) {
+      AppState.cpu = sysRes.cpu_percent || 0;
+      AppState.ram = sysRes.ram_percent || 0;
+      if (sysRes.gpu) {
+        AppState.gpu.load = sysRes.gpu.load || 0;
+        AppState.gpu.vram = sysRes.gpu.vram || 0;
+        AppState.gpu.vramTotal = sysRes.gpu.vram_total || 0;
+      }
+    }
+    // Load knowledge base stats
+    const kbRes = await apiFetch("/knowledge/stats").catch(() => null);
+    if (kbRes) {
+      AppState.tasks.kbDocs = kbRes.documents || kbRes.doc_count || 0;
+    }
+  } catch (e) {
+    console.warn("[NEXUS] Could not load live app state:", e);
+  }
+}
+
 /* -------- mode UI -------- */
 function updateModeUI() {
-  // sidebar status sub
   const sub = $("#side-mode");
-  const live = NexusMode.value === "live";
+  const connected = NexusMode.health != null;
   if (sub) {
-    sub.textContent = live
+    sub.textContent = connected
       ? (NexusMode.health && NexusMode.health.gateway_avail ? "BACKEND LIVE · FULL" : "BACKEND LIVE · DEGRADED")
-      : "DEMO SIMULATION";
-    sub.classList.toggle("live", live);
+      : "BACKEND OFFLINE";
+    sub.classList.toggle("live", connected);
   }
   const toggle = $("#mode-toggle");
   if (toggle) {
-    toggle.classList.toggle("live", live);
+    toggle.classList.toggle("live", connected);
     const lbl = $(".mode-lbl", toggle);
-    if (lbl) lbl.textContent = live ? "LIVE" : "DEMO";
+    if (lbl) lbl.textContent = connected ? "LIVE" : "OFFLINE";
   }
   const banner = $("#mode-banner");
   if (banner) {
-    banner.classList.toggle("live", live);
-    $(".mb-tag", banner).textContent = live ? "LIVE BACKEND CONNECTED" : "DEMO MODE · MOCK DATA";
+    banner.classList.toggle("live", connected);
+    const tag = $(".mb-tag", banner);
+    if (tag) tag.textContent = connected ? "LIVE BACKEND CONNECTED" : "BACKEND OFFLINE";
     const subEl = $(".mb-sub", banner);
     if (subEl) {
       const h = NexusMode.health;
-      subEl.textContent = live
+      subEl.textContent = connected
         ? `${h.name} · gateway ${h.gateway_avail ? "ready" : "offline"} · air-gap ${h.air_gap ? "on" : "off"}`
-        : "Static simulator — connect the FastAPI backend to switch to live orchestration.";
+        : "Cannot reach FastAPI backend at /api. Start the backend server.";
     }
   }
 }
 
-/* Build the mode-switch chip injected into the topbar */
+/* Build the mode-status chip injected into the topbar */
 function modeChipHTML() {
   return `
-    <button class="topbar-chip mode" id="mode-toggle" title="Runtime mode: DEMO / LIVE">
+    <button class="topbar-chip mode" id="mode-toggle" title="Backend status">
       <span class="dot" aria-hidden="true"></span>
-      <span class="chip-lbl">Mode</span>
-      <span class="val mode-lbl">DEMO</span>
+      <span class="chip-lbl">Status</span>
+      <span class="val mode-lbl">LIVE</span>
     </button>`;
 }
 
@@ -115,24 +153,12 @@ function wireModeToggle() {
   const toggle = $("#mode-toggle");
   if (!toggle) return;
   toggle.addEventListener("click", async () => {
-    if (NexusMode.value === "live") {
-      NexusMode.value = "demo";
-      toast("Switched to DEMO mode", "Mock simulator active", "warn");
+    toast("Checking backend...", "Contacting /api/health");
+    await detectBackend();
+    if (NexusMode.health) {
+      toast("Backend connected", `Gateway ${NexusMode.health.gateway_avail ? "ready" : "degraded"}`, "ok");
     } else {
-      toast("Switching to LIVE...", "Contacting backend /api/health");
-      await detectBackend();
-      if (NexusMode.value === "live") {
-        if (!NexusMode.token) {
-          try {
-            await nexusLogin("admin", "admin");
-            toast("Connected to backend", `Gateway ${NexusMode.health.gateway_avail ? "ready" : "degraded"}`);
-          } catch (e) {
-            toast("Backend reachable", "Session not authenticated — session is read-only", "warn");
-          }
-        }
-      } else {
-        toast("Backend not reachable", "Staying in demo mode", "err");
-      }
+      toast("Backend offline", "Start the FastAPI server", "err");
     }
     updateModeUI();
   });

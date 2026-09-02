@@ -1,91 +1,44 @@
 /* ============================================================
-   SOVEREIGN AI — Mock data & state
+   NEXUS AI 2.0 — Application state & icons
+   All data comes from the live backend. No mock data.
    ============================================================ */
 
 const DemoMode = {
-  enabled: true,
-  label: "demo",
+  enabled: false,
+  label: "live",
   connected: false,
 };
 
 const AppState = {
-  mode: "demo", // "demo" | "live"
-  user: { name: "A. Sharma", role: "Plant Operations Engineer", initials: "AS" },
-  workspace: "NEXUS-UNIT-03 / Refinery Operations",
+  mode: "live",
+  user: { name: "Mani", role: "Admin", initials: "M" },
+  workspace: "NEXUS AI 2.0",
   currentTask: null,
   activeView: "dashboard",
-  gpu: { load: 61, vram: 7.8, vramTotal: 12 },
-  cpu: 32,
-  ram: 61,
-  notifications: [
-    { t: "Approval note validated", s: "APPROVAL-NOTE-042 · 2 min ago", ok: true },
-    { t: "OCR completed", s: "INSPECTION-2026-081 · 14 pages", ok: true },
-    { t: "New model loaded", s: "Vision-8B quantized", ok: true },
-    { t: "Knowledge base re-indexed", s: "local_kb · 2,431 chunks", ok: false },
-  ],
-  documents: [
-    { id: "INSPECTION-2026-081", name: "Inspection_2026_081_summary.pdf", type: "pdf", size: "4.2 MB", pages: 14, date: "18 Aug 2026", cat: "Inspection Report", status: "Processed", analyzed: true },
-    { id: "P&ID-UNIT-03", name: "P&ID_Unit03_RevC.pdf", type: "pdf", size: "11.8 MB", pages: 42, date: "02 Sep 2026", cat: "Engineering Drawing", status: "Indexed" },
-    { id: "VENDOR-EVAL-017", name: "Vendor_Evaluation_017.xlsx", type: "xlsx", size: "680 KB", pages: 3, date: "27 Jul 2026", cat: "Data Analysis", status: "Processed" },
-    { id: "TANK-12", name: "Tank_12_photographic_record.jpg", type: "img", size: "2.1 MB", pages: 1, date: "09 Sep 2026", cat: "Field Photo", status: "Analyzed" },
-    { id: "PUMP-06", name: "Pump_06_handwritten_note.jpg", type: "img", size: "1.4 MB", pages: 1, date: "21 Aug 2026", cat: "Handwritten Note", status: "Analyzed" },
-    { id: "QA-SOP-014", name: "QA_SOP_014.pdf", type: "pdf", size: "3.6 MB", pages: 22, date: "15 Jun 2026", cat: "Procedure", status: "Indexed" },
-  ],
-  knowledge: [
-    { doc: "SOP-ENG-042", title: "Engineering Inspection Procedure", desc: "Standard operating procedure for pressure vessel and pipeline inspections.", chunks: 2431, updated: "12 Aug 2026", status: "Indexed", type: "SOP" },
-    { doc: "MAN-HP-09", title: "Heat Exchanger Maintenance Manual", desc: "Maintenance schedule and torque specifications for shell-and-tube exchangers.", chunks: 1876, updated: "03 Sep 2026", status: "Indexed", type: "Manual" },
-    { doc: "STD-PTRL-3", title: "Pressure Relief Valve Standard", desc: "Engineering standard for relief valve selection, sizing and testing.", chunks: 1102, updated: "28 Aug 2026", status: "Indexed", type: "Standard" },
-    { doc: "PO-DEF-2026", title: "Plant Operations Correspondence 2026", desc: "Categorized past correspondence between plant units and contractors.", chunks: 3204, updated: "19 Jul 2026", status: "Indexed", type: "Correspondence" },
-    { doc: "INSR-052", title: "Inspection Findings Register", desc: "Cumulative inspection findings and defect register across units.", chunks: 2510, updated: "06 Sep 2026", status: "Indexed", type: "Register" },
-    { doc: "POL-SAF-2", title: "Confidentiality & Data Handling Policy", desc: "Internal policy governing handling of confidential industrial data.", chunks: 640, updated: "01 Jan 2026", status: "Indexed", type: "Policy" },
-  ],
-  models: [
-    { id: "reasoning", type: "Reasoning Model", name: "Qwen2.5-32B-Instruct", src: "Open-weight · Qwen", status: "READY", loaded: true, vram: 8.2, ctx: 8192, quant: "Q4_K_M", caps: ["Reasoning", "Document analysis", "Planning"], task: "Reasoning, planning, drafting" },
-    { id: "coding", type: "Coding Model", name: "DeepSeek-Coder-6.7B", src: "Open-weight · DeepSeek", status: "READY", loaded: true, vram: 4.1, ctx: 8192, quant: "Q4_K_M", caps: ["Code generation", "Debugging", "Testing"], task: "Code generation & sandbox" },
-    { id: "vision", type: "Vision Model", name: "Qwen2-VL-8B", src: "Open-weight · Multimodal", status: "READY", loaded: true, vram: 5.4, ctx: 4096, quant: "Q4_K_M", caps: ["OCR", "Image understanding", "Document vision"], task: "OCR, image & document vision" },
-    { id: "embed", type: "Embedding Model", name: "bge-m3", src: "Open-weight · Embedding", status: "READY", loaded: true, vram: 1.2, ctx: 8192, quant: "FP16", caps: ["Semantic search", "RAG indexing", "Dense retrieval"], task: "Knowledge base indexing" },
-  ],
-  networkLog: [
-    { ts: "14:32:01", src: "Workbench", dst: "127.0.0.1", proto: "HTTP", status: "ALLOWED", data: "1.2 KB", note: "Local model gateway" },
-    { ts: "14:32:03", src: "Workbench", dst: "10.0.0.12", proto: "HTTP", status: "ALLOWED", data: "4.8 KB", note: "On-prem KB node" },
-    { ts: "14:32:04", src: "Workbench", dst: "8.8.8.8", proto: "DNS", status: "BLOCKED", data: "0 B", note: "External DNS denied" },
-    { ts: "14:32:05", src: "Workbench", dst: "13.107.42.14", proto: "HTTPS", status: "BLOCKED", data: "0 B", note: "Cloud API denied" },
-    { ts: "14:32:07", src: "Sandbox", dst: "172.17.0.2", proto: "HTTP", status: "ALLOWED", data: "9.6 KB", note: "Local container" },
-    { ts: "14:32:09", src: "Workbench", dst: "10.0.0.5", proto: "SMB", status: "ALLOWED", data: "0.4 MB", note: "Local file storage" },
-    { ts: "14:32:11", src: "Workbench", dst: "142.250.72.14", proto: "HTTPS", status: "BLOCKED", data: "0 B", note: "Cloud AI denied" },
-  ],
+  gpu: { load: 0, vram: 0, vramTotal: 0 },
+  cpu: 0,
+  ram: 0,
+  notifications: [],
+  documents: [],
+  knowledge: [],
+  models: [],
+  networkLog: [],
   security: {
     internet: "BLOCKED",
     externalApi: 0,
     externalDns: 0,
     cloudAi: 0,
     dataEgress: "0 MB",
-    localRequests: 2481,
+    localRequests: 0,
   },
-  auditLogs: [
-    { user: "Admin", time: "14:31:08", action: "Received task", model: "—", source: "Composer", tools: "Router", status: "SUCCESS" },
-    { user: "Admin", time: "14:31:10", action: "Detected scanned PDF", model: "Vision-8B", source: "inspection_report.pdf", tools: "File detection", status: "SUCCESS" },
-    { user: "Admin", time: "14:31:15", action: "OCR processing", model: "Vision-8B", source: "INSPECTION-2026-081", tools: "PaddleOCR", status: "SUCCESS" },
-    { user: "Admin", time: "14:31:18", action: "Retrieved SOP", model: "bge-m3", source: "SOP-ENG-042", tools: "RAG", status: "SUCCESS" },
-    { user: "Admin", time: "14:31:29", action: "Generated approval note", model: "Reasoning-32B", source: "inspection_report.pdf", tools: "OCR→RAG→DOCX", status: "SUCCESS" },
-    { user: "Admin", time: "14:31:35", action: "Validated document", model: "Validation", source: "Approval_Note_042.docx", tools: "DOCX Validator", status: "SUCCESS" },
-    { user: "Admin", time: "10:02:11", action: "Generated risk calculator", model: "Code-6.7B", source: "inspection_scores.csv", tools: "Sandbox→Python", status: "SUCCESS" },
-    { user: "Admin", time: "09:44:00", action: "Indexed document", model: "bge-m3", source: "P&ID_Unit03_RevC.pdf", tools: "Chunker→Embedder", status: "SUCCESS" },
-  ],
-  deliverables: [
-    { id: "doc-1", name: "Approval_Note_042.docx", type: "DOCX", meta: "Generated by: Sovereign Agent · Source: Inspection Report 042 · Validated ✓", cat: "docx", date: "14 Aug 2026", size: "86 KB", validated: true, source: "INSPECTION-2026-081" },
-    { id: "doc-2", name: "Inspection_Risk_Scores.py", type: "CODE", meta: "Generated by: Sovereign Agent · Sandbox validated ✓", cat: "code", date: "14 Aug 2026", size: "4 KB", validated: true, source: "inspection_scores.csv" },
-    { id: "doc-3", name: "Risk_Summary_Report.xlsx", type: "XLSX", meta: "Generated by: Analytical Agent · 142 rows", cat: "xlsx", date: "13 Aug 2026", size: "240 KB", validated: true, source: "VENDOR-EVAL-017" },
-    { id: "doc-4", name: "Monthly_Operations_Review.pptx", type: "PPTX", meta: "Generated by: Sovereign Agent · 18 slides", cat: "pptx", date: "11 Aug 2026", size: "3.1 MB", validated: true, source: "OpsData 2026-07" },
-    { id: "doc-5", name: "P&ID_Unit03_Analysis.pdf", type: "PDF", meta: "Generated by: Vision Agent · Region analysis", cat: "pdf", date: "09 Sep 2026", size: "5.6 MB", validated: true, source: "P&ID-UNIT-03" },
-    { id: "doc-6", name: "Corrosion_Calc_NPS8.xlsx", type: "CALC", meta: "Generated by: Calculation Agent · validated ✓", cat: "calc", date: "28 Jul 2026", size: "92 KB", validated: true, source: "SOP-ENG-042 §6" },
-  ],
+  auditLogs: [],
+  deliverables: [],
   tasks: {
-    planned: 3,
-    running: 2,
-    todayCompleted: 17,
-    loadedModels: 4,
-    kbDocs: 128,
+    planned: 0,
+    running: 0,
+    todayCompleted: 0,
+    loadedModels: 0,
+    kbDocs: 0,
   },
 };
 
@@ -154,7 +107,7 @@ const NAV_GROUPS = [
       { id: "dashboard", label: "Command Center", icon: "dashboard", cat: "main" },
       { id: "new-task", label: "New Task", icon: "task", cat: "main", primary: true },
       { id: "workspace", label: "Workspace", icon: "workspace" },
-      { id: "runs", label: "Agent Runs", icon: "runs", badge: 3 },
+      { id: "runs", label: "Agent Runs", icon: "runs", badge: 0 },
     ],
   },
   {
