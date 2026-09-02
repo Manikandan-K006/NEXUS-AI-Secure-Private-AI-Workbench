@@ -77,6 +77,6 @@ def test_models(body: TestReq, _payload=Depends(get_current_user)):
         if m.model_type == "embed":
             continue
         results.append({"id": m.model_id, "name": m.name,
-                        "available": model_gateway.gateway.available,
-                        "status": "ready" if model_gateway.gateway.available else "unavailable"})
+                    "available": model_gateway.registry.available,
+                    "status": "ready" if model_gateway.registry.available else "unavailable"})
     return {"results": results}

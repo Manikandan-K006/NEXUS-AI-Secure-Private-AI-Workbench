@@ -319,8 +319,8 @@ def _pdf_date(raw: str) -> str:
 
 def _structured_via_model(summary_text: str, entities, measurements, findings, meta) -> dict | None:
     """Ask the LOCAL reasoning model for a structured analysis. Returns None if unavailable."""
-    from app.services.model_gateway import gateway, pick_reasoning
-    if not gateway.available:
+    from app.services.model_gateway import registry, pick_reasoning
+    if not registry.available:
         return None
     spec = pick_reasoning()
     prompt = (
@@ -333,7 +333,7 @@ def _structured_via_model(summary_text: str, entities, measurements, findings, m
     )
     try:
         from app.services.agent import _extract_code
-        resp = gateway.chat(spec.model_id, [
+        resp = registry.chat(spec.model_id, [
             {"role": "system", "content": "You return only valid JSON. No markdown."},
             {"role": "user", "content": prompt},
         ])
@@ -439,5 +439,5 @@ def analyze_document(path: Path, ext: str, doc_id: str, filename: str) -> dict:
 
 
 def _gateway_unavailable() -> bool:
-    from app.services.model_gateway import gateway
-    return not gateway.available
+    from app.services.model_gateway import registry
+    return not registry.available

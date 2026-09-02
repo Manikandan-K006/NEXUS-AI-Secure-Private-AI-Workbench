@@ -13,14 +13,14 @@ router = APIRouter(tags=["system"])
 def health():
     settings = get_settings()
     mode = "LIVE"
-    if not model_gateway.gateway.available:
+    if not model_gateway.registry.available:
         mode = "DEGRADED"
     return {
         "status": "ok",
         "mode": mode,
         "frontend_mode": "LIVE",
-        "gateway": "ollama",
-        "gateway_avail": model_gateway.gateway.available,
+        "gateway": "registry",
+        "gateway_avail": model_gateway.registry.available,
         "air_gap": settings.air_gap,
         "version": "1.0.0",
         "name": "NEXUS AI Workbench",

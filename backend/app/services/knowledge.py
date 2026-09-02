@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.core import db
 from app.core.config import get_settings
-from app.services.model_gateway import gateway, pick_embed
+from app.services.model_gateway import registry, pick_embed
 
 logger = logging.getLogger("nexus.kb")
 
@@ -32,7 +32,7 @@ def _cosine(a: list, b: list) -> float:
 def _chunk_embed(text: str):
     model = pick_embed()
     try:
-        emb = gateway.embed(model.model_id, text)
+        emb = registry.embed(model.model_id, text)
         return emb[0] if isinstance(emb, list) and emb else emb
     except Exception as e:  # noqa
         logger.warning("embed failed (%s) — using fallback hash embedding", e)
